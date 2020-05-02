@@ -1,8 +1,12 @@
 #include <Arduino.h>
 
+// LMIC includes
+#include <SPI.h>
 #include <lmic.h>
 #include <hal/hal.h>
-#include <SPI.h>
+
+// Low Power library
+#include <LowPower.h>
 
 // include The Things Network OTAA configuration
 #include "ttn-config.h"
@@ -122,9 +126,15 @@ void onEvent (ev_t ev) {
               Serial.print(LMIC.dataLen);
               Serial.println(F(" bytes of payload"));
             }
-            // Schedule next transmission
-            os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(TX_INTERVAL), do_send);
+            
+            // enqueue the send job
+            do_send(&sendjob);
+            for (int i=0; i<int(TX_INTERVAL/8); i++) {
+              // Use the low power library to save energy and send the CPU into sleep mode
+              LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+            }
             break;
+
         case EV_LOST_TSYNC:
             Serial.println(F("EV_LOST_TSYNC"));
             break;
@@ -152,6 +162,16 @@ void onEvent (ev_t ev) {
         case EV_TXSTART:
             Serial.println(F("EV_TXSTART"));
             break;
+        case EV_TXCANCELED:
+            Serial.println(F("EV_TXCANCELED"));
+            break;
+        case EV_RXSTART:
+            /* do not print anything -- it wrecks timing */
+            break;
+        case EV_JOIN_TXCOMPLETE:
+            Serial.println(F("EV_JOIN_TXCOMPLETE: no JoinAccept"));
+            break;
+        
         default:
             Serial.print(F("Unknown event: "));
             Serial.println((unsigned) ev);
