@@ -26,7 +26,7 @@ void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8); }
 void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8); }
 void os_getDevKey (u1_t* buf) { memcpy_P(buf, APPKEY, 16); }
 
-static uint8_t myData[2];
+static uint8_t myData[1];
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
@@ -51,7 +51,7 @@ void printHex2(unsigned v) {
     Serial.print(v, HEX);
 }
 
-int readBatteryVoltage()
+byte readBatteryVoltage()
 {
   // read the battery voltage
   float vBat = analogRead(VBAT_PIN);
@@ -59,7 +59,7 @@ int readBatteryVoltage()
   vBat *= 3.3;  // Multiply by 3.3V, our reference voltage
   vBat /= 1024; // convert to voltage
 
-  return (int)(vBat * 100);
+  return (byte)((vBat * 100) - 270);
 }
 
 void do_send(osjob_t* j){
@@ -69,8 +69,7 @@ void do_send(osjob_t* j){
     } else {
         // get the battery voltage
         int vBat = readBatteryVoltage();
-        myData[0] = highByte(vBat);
-        myData[1] = lowByte(vBat);
+        myData[0] = vBat;
 
         // Prepare upstream data transmission at the next possible time.
         LMIC_setTxData2(1, myData, sizeof(myData), 0);
