@@ -11,11 +11,22 @@
 // include The Things Network OTAA configuration
 #include "ttn-config.h"
 
+// define the pins for the module
+#define TRIGGER_PIN A0
+#define ECHO_PIN A1
+#define VBAT_PIN A9
+
+// maximum distance of the ultrasonic sensor
+#define MAX_DISTANCE 300
+
+#define MEASUREMENTS 10
+#define RETRIES 10
+
 void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8); }
 void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8); }
 void os_getDevKey (u1_t* buf) { memcpy_P(buf, APPKEY, 16); }
 
-static uint8_t mydata[] = "Hello, world!";
+static uint8_t myData[2];
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
@@ -40,13 +51,29 @@ void printHex2(unsigned v) {
     Serial.print(v, HEX);
 }
 
+int readBatteryVoltage()
+{
+  // read the battery voltage
+  float vBat = analogRead(VBAT_PIN);
+  vBat *= 2;    // we divided by 2, so multiply back
+  vBat *= 3.3;  // Multiply by 3.3V, our reference voltage
+  vBat /= 1024; // convert to voltage
+
+  return (int)(vBat * 100);
+}
+
 void do_send(osjob_t* j){
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
         Serial.println(F("OP_TXRXPEND, not sending"));
     } else {
+        // get the battery voltage
+        int vBat = readBatteryVoltage();
+        myData[0] = highByte(vBat);
+        myData[1] = lowByte(vBat);
+
         // Prepare upstream data transmission at the next possible time.
-        LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
+        LMIC_setTxData2(1, myData, sizeof(myData), 0);
         Serial.println(F("Packet queued"));
     }
     // Next TX is scheduled after TX_COMPLETE event.
@@ -79,18 +106,18 @@ void onEvent (ev_t ev) {
               u1_t nwkKey[16];
               u1_t artKey[16];
               LMIC_getSessionKeys(&netid, &devaddr, nwkKey, artKey);
-              Serial.print("netid: ");
+              Serial.print(F("netid: "));
               Serial.println(netid, DEC);
-              Serial.print("devaddr: ");
+              Serial.print(F("devaddr: "));
               Serial.println(devaddr, HEX);
-              Serial.print("AppSKey: ");
+              Serial.print(F("AppSKey: "));
               for (size_t i=0; i<sizeof(artKey); ++i) {
                 if (i != 0)
                   Serial.print("-");
                 printHex2(artKey[i]);
               }
               Serial.println("");
-              Serial.print("NwkSKey: ");
+              Serial.print(F("NwkSKey: "));
               for (size_t i=0; i<sizeof(nwkKey); ++i) {
                       if (i != 0)
                               Serial.print("-");
