@@ -96,6 +96,8 @@ void onEvent (ev_t ev) {
             break;
         case EV_JOINING:
             Serial.println(F("EV_JOINING"));
+            // use a higher SF to max the probability of an OTAA join
+            LMIC_setDrTxpow(DR_SF10,14);
             break;
         case EV_JOINED:
             Serial.println(F("EV_JOINED"));
@@ -126,8 +128,8 @@ void onEvent (ev_t ev) {
             }
             // Disable link check validation (automatically enabled
             // during join, but because slow data rates change max TX
-	    // size, we don't use it in this example.
-            LMIC_setLinkCheckMode(0);
+	        // size, we don't use it in this example.
+            // LMIC_setLinkCheckMode(0);
             break;
         /*
         || This event is defined but not used in the code. No
@@ -213,6 +215,11 @@ void setup() {
     os_init();
     // Reset the MAC state. Session and pending data transfers will be discarded.
     LMIC_reset();
+
+    // enable ADR
+    LMIC_setAdrMode(1);
+    LMIC_setLinkCheckMode(1);
+    LMIC_setClockError(MAX_CLOCK_ERROR * 1 / 100);
 
     // Start job (sending automatically starts OTAA too)
     do_send(&sendjob);
