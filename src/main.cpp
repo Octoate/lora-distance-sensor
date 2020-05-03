@@ -8,6 +8,9 @@
 // Low Power library
 #include <LowPower.h>
 
+// NewPing ultrasonic distance sensor library
+#include <NewPing.h>
+
 // include The Things Network OTAA configuration
 #include "ttn-config.h"
 
@@ -22,11 +25,16 @@
 #define MEASUREMENTS 10
 #define RETRIES 10
 
+// define an array for averaging the readings
+int distances[10];
+
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+
 void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8); }
 void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8); }
 void os_getDevKey (u1_t* buf) { memcpy_P(buf, APPKEY, 16); }
 
-static uint8_t myData[1];
+static uint8_t myData[3];
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
@@ -62,6 +70,34 @@ byte readBatteryVoltage()
   return (byte)((vBat * 100) - 270);
 }
 
+int readDistance()
+{
+    int currentDistance = 0;
+    float average = 0.0;
+    int retry = 0;
+
+    for (int i = 0; i < MEASUREMENTS; i++)
+    {
+        retry = 0;
+        do
+        {
+            currentDistance = sonar.ping_cm();
+            
+            Serial.print("Ping ");
+            Serial.print(i);
+            Serial.print(" = ");
+            Serial.print(currentDistance);
+            Serial.println(" cm");
+            delay(50);
+            retry++;
+        } while (currentDistance == 0 && retry < RETRIES);
+
+        average += currentDistance;
+    }
+
+    return (int)((average / (float)MEASUREMENTS) * 100);
+}
+
 void do_send(osjob_t* j){
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
@@ -70,6 +106,11 @@ void do_send(osjob_t* j){
         // get the battery voltage
         int vBat = readBatteryVoltage();
         myData[0] = vBat;
+
+        // get the distance
+        int distance = readDistance();
+        myData[1] = highByte(distance);
+        myData[2] = lowByte(distance);
 
         // Prepare upstream data transmission at the next possible time.
         LMIC_setTxData2(1, myData, sizeof(myData), 0);
