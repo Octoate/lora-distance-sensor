@@ -22,8 +22,8 @@
 // maximum distance of the ultrasonic sensor
 #define MAX_DISTANCE 300
 
-#define MEASUREMENTS 10
-#define RETRIES 10
+#define MEASUREMENTS 5
+#define RETRIES 5
 
 // define an array for averaging the readings
 int distances[10];
